@@ -118,7 +118,7 @@ void delete ()
       if (strcmp (name, names[i]) == 0)
         {
           names[i] = names[n - 1];
-          numbers[i] = names[n - 1];
+          numbers[i] = numbers[n - 1];
           n--;
           printf ("'%s' was deleted successfully.\n", name);
           return;
