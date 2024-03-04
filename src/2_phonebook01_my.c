@@ -11,8 +11,6 @@
 char *names[CAPACITY];   /* names */
 char *numbers[CAPACITY]; /* phone numbers */
 int n = 0;               /* number of people in phone directory */
-FILE *fr;
-FILE *fw;
 
 void load ();
 void add ();
@@ -21,6 +19,7 @@ void status ();
 void delete ();
 void save ();
 void sort (char *names[]);
+int search (char *name);
 
 int
 main ()
@@ -44,8 +43,6 @@ main ()
         save ();
       else if (strcmp (command, "exit") == 0)
         break;
-
-      sort (names);
     }
 
   return 0;
@@ -57,16 +54,23 @@ load ()
   char file_name[BUFFER_SIZE], name[BUFFER_SIZE], number[BUFFER_SIZE];
   scanf ("%s", file_name);
 
-  fr = fopen (file_name, "r");
+  FILE *fp = fopen (file_name, "r");
+  if (fp == NULL)
+    {
+      printf ("Open failed.\n");
+      return;
+    }
 
-  while ((fscanf (fr, "%s %s", name, number)) != EOF)
+  while ((fscanf (fp, "%s %s", name, number)) != EOF)
     {
       names[n] = _strdup (name);
       numbers[n] = _strdup (number);
       n++;
     }
 
-  fclose (fr);
+  sort (names);
+
+  fclose (fp);
 }
 
 void
@@ -75,10 +79,19 @@ add ()
   char name[BUFFER_SIZE], number[BUFFER_SIZE];
 
   scanf ("%s %s", name, number);
-  names[n] = _strdup (name);
-  numbers[n] = _strdup (number);
-  n++;
 
+  int i = n - 1;
+  while (i >= 0 && strcmp (names[i], name) > 0)
+    {
+      names[i + 1] = names[i];
+      numbers[i + 1] = numbers[i];
+      i--;
+    }
+
+  names[i + 1] = _strdup (name);
+  numbers[i + 1] = _strdup (number);
+
+  n++;
   printf ("%s was added successfully\n", name);
 }
 
@@ -88,16 +101,12 @@ find ()
   char name[BUFFER_SIZE];
   scanf ("%s", name);
 
-  for (int i = 0; i < n; i++)
-    {
-      if (strcmp (names[i], name) == 0)
-        {
-          printf ("%s\n", numbers[i]);
-          return;
-        }
-    }
+  int index = search (name);
 
-  printf ("No person named '%s' exists\n", name);
+  if (index == -1)
+    printf ("No person named '%s' exists\n", name);
+  else
+    printf ("%s\n", numbers[index]);
 }
 
 void
@@ -112,39 +121,45 @@ void delete ()
 {
   char name[BUFFER_SIZE];
   scanf ("%s", name);
+  int index = search (name);
+  if (index == -1)
+    printf ("No person named %s exists.\n", name);
 
-  for (int i = 0; i < n; i++)
+  int j = index;
+  for (; j < n - 1; j++)
     {
-      if (strcmp (name, names[i]) == 0)
-        {
-          names[i] = names[n - 1];
-          numbers[i] = numbers[n - 1];
-          n--;
-          printf ("'%s' was deleted successfully.\n", name);
-          return;
-        }
+      names[j] = names[j + 1];
+      numbers[j] = numbers[j + 1];
+      printf ("%d\n", j);
     }
-  printf ("No person named '%s' exists.\n", name);
+
+  n--;
+  printf ("'%s' was deleted successfully.\n", name);
 }
 
 void
 save ()
 {
   char file_name[BUFFER_SIZE];
+  char tmp[BUFFER_SIZE];
+
+  scanf ("%s", tmp);
   scanf ("%s", file_name);
-  fw = fopen (file_name, "w");
-  if (fw == NULL)
+
+  FILE *fp = fopen (file_name, "w");
+  if (fp == NULL)
     {
       printf ("Open failed");
+      return;
     }
 
   for (int i = 0; i < n; i++)
     {
-      fprintf (fw, "%s ", names[i]);
-      fprintf (fw, "%s\n", numbers[i]);
+      fprintf (fp, "%s ", names[i]);
+      fprintf (fp, "%s\n", numbers[i]);
     }
 
-  fclose (fw);
+  fclose (fp);
 }
 
 void
@@ -182,4 +197,16 @@ sort (char *names[])
       names[min] = names[i];
       names[i] = temp;
     }
+}
+
+int
+search (char *name)
+{
+  for (int i = 0; i < n; i++)
+    {
+      if (strcmp (name, names[i]) == 0)
+        return i;
+    }
+
+  return -1;
 }
