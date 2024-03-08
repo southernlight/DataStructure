@@ -5,12 +5,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CAPACITY 100
+#define CAPACITY 10
+#define INIT_CAPACITY 3
 #define BUFFER_SIZE 20
 
-char *names[CAPACITY];   /* names */
-char *numbers[CAPACITY]; /* phone numbers */
-int n = 0;               /* number of people in phone directory */
+char **names;   /* names */
+char **numbers; /* phone numbers */
+
+int capacity = INIT_CAPACITY;
+int n = 0; /* number of people in phone directory */
+char delim[] = " ";
+char *token;
+char command[BUFFER_SIZE];
+
+void init_directory ();
+void process_command ();
 
 void load ();
 void add ();
@@ -20,41 +29,80 @@ void delete ();
 void save ();
 void sort (char *names[]);
 int search (char *name);
+int read_line (char str[], int limit);
 
 int
 main ()
 {
-  char command[BUFFER_SIZE];
+  /*  char command[BUFFER_SIZE];
+    while (1)
+    {
+        printf("$ ");
+        scanf("%s", command);
+        if (strcmp(command, "read") == 0)
+            load();
+        else if (strcmp(command, "add") == 0)
+            add();
+        else if (strcmp(command, "find") == 0)
+            find();
+        else if (strcmp(command, "status") == 0)
+            status();
+        else if (strcmp(command, "delete") == 0)
+            delete ();
+        else if (strcmp(command, "save") == 0)
+            save();
+        else if (strcmp(command, "exit") == 0)
+            break;
+    }*/
+
+  init_directory ();
+  process_command ();
+
+  return 0;
+}
+
+void
+init_directory ()
+{
+  names = (char **)malloc (capacity * sizeof (char *));
+  numbers = (char **)malloc (capacity * sizeof (char *));
+}
+
+void
+process_command ()
+{
   while (1)
     {
       printf ("$ ");
-      scanf ("%s", command);
-      if (strcmp (command, "read") == 0)
+      read_line (command, BUFFER_SIZE);
+
+      token = strtok (command, delim);
+
+      if (strcmp (token, "read") == 0)
         load ();
-      else if (strcmp (command, "add") == 0)
+      else if (strcmp (token, "add") == 0)
         add ();
-      else if (strcmp (command, "find") == 0)
+      else if (strcmp (token, "find") == 0)
         find ();
-      else if (strcmp (command, "status") == 0)
+      else if (strcmp (token, "status") == 0)
         status ();
-      else if (strcmp (command, "delete") == 0)
+      else if (strcmp (token, "delete") == 0)
         delete ();
-      else if (strcmp (command, "save") == 0)
+      else if (strcmp (token, "save") == 0)
         save ();
-      else if (strcmp (command, "exit") == 0)
+      else if (strcmp (token, "exit") == 0)
         break;
     }
-
-  return 0;
 }
 
 void
 load ()
 {
   char file_name[BUFFER_SIZE], name[BUFFER_SIZE], number[BUFFER_SIZE];
-  scanf ("%s", file_name);
 
-  FILE *fp = fopen (file_name, "r");
+  token = strtok (NULL, delim);
+  // printf("%s ", token);
+  FILE *fp = fopen (token, "r");
   if (fp == NULL)
     {
       printf ("Open failed.\n");
@@ -63,12 +111,19 @@ load ()
 
   while ((fscanf (fp, "%s %s", name, number)) != EOF)
     {
-      names[n] = _strdup (name);
-      numbers[n] = _strdup (number);
       n++;
     }
 
-  sort (names);
+  // sort(names);
+
+  names = (char **)malloc (n * sizeof (char *));
+  numbers = (char **)malloc (n * sizeof (char *));
+
+  for (int i = 0; i < n; ++i)
+    {
+      *(names + i) = _strdup (name);
+      *(numbers + i) = _strdup (number);
+    }
 
   fclose (fp);
 }
@@ -113,7 +168,7 @@ void
 status ()
 {
   for (int i = 0; i < n; i++)
-    printf ("%s %s\n", names[i], numbers[i]);
+    printf ("%s %s\n", *(names + i), *(numbers + i));
   printf ("Total %d persons.\n", n);
 }
 
@@ -130,7 +185,7 @@ void delete ()
     {
       names[j] = names[j + 1];
       numbers[j] = numbers[j + 1];
-      printf ("%d\n", j);
+      // printf("%d\n", j);
     }
 
   n--;
@@ -209,4 +264,17 @@ search (char *name)
     }
 
   return -1;
+}
+
+int
+read_line (char str[], int limit)
+{
+  int ch, i = 0;
+
+  while ((ch = getchar ()) != '\n')
+    if (i < limit - 1)
+      str[i++] = ch;
+
+  str[i] = '\0';
+  return i;
 }
