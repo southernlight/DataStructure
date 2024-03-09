@@ -7,7 +7,7 @@
 
 #define CAPACITY 10
 #define INIT_CAPACITY 3
-#define BUFFER_SIZE 20
+#define BUFFER_SIZE 50
 
 char **names;   /* names */
 char **numbers; /* phone numbers */
@@ -34,27 +34,6 @@ int read_line (char str[], int limit);
 int
 main ()
 {
-  /*  char command[BUFFER_SIZE];
-    while (1)
-    {
-        printf("$ ");
-        scanf("%s", command);
-        if (strcmp(command, "read") == 0)
-            load();
-        else if (strcmp(command, "add") == 0)
-            add();
-        else if (strcmp(command, "find") == 0)
-            find();
-        else if (strcmp(command, "status") == 0)
-            status();
-        else if (strcmp(command, "delete") == 0)
-            delete ();
-        else if (strcmp(command, "save") == 0)
-            save();
-        else if (strcmp(command, "exit") == 0)
-            break;
-    }*/
-
   init_directory ();
   process_command ();
 
@@ -98,56 +77,88 @@ process_command ()
 void
 load ()
 {
+  int count = 0;
+
   char file_name[BUFFER_SIZE], name[BUFFER_SIZE], number[BUFFER_SIZE];
 
-  token = strtok (NULL, delim);
-  // printf("%s ", token);
-  FILE *fp = fopen (token, "r");
-  if (fp == NULL)
+  while ((token = strtok (NULL, delim)) != NULL)
     {
-      printf ("Open failed.\n");
-      return;
+      count++;
+      if (count == 1)
+        strcpy (file_name, token);
     }
 
-  while ((fscanf (fp, "%s %s", name, number)) != EOF)
+  if (count < 1)
+    printf ("File name required\n");
+
+  else if (count == 1)
     {
-      n++;
+      FILE *fp = fopen (file_name, "r");
+      if (fp == NULL)
+        {
+          printf ("Open failed.\n");
+          return;
+        }
+
+      while ((fscanf (fp, "%s %s", name, number)) != EOF)
+        {
+          n++;
+        }
+
+      // sort(names);
+
+      names = (char **)malloc (n * sizeof (char *));
+      numbers = (char **)malloc (n * sizeof (char *));
+
+      for (int i = 0; i < n; ++i)
+        {
+          *(names + i) = _strdup (name);
+          *(numbers + i) = _strdup (number);
+        }
+
+      fclose (fp);
     }
 
-  // sort(names);
-
-  names = (char **)malloc (n * sizeof (char *));
-  numbers = (char **)malloc (n * sizeof (char *));
-
-  for (int i = 0; i < n; ++i)
-    {
-      *(names + i) = _strdup (name);
-      *(numbers + i) = _strdup (number);
-    }
-
-  fclose (fp);
+  else
+    printf ("Too many arguments\n");
 }
 
 void
 add ()
 {
+  int count = 0;
+
   char name[BUFFER_SIZE], number[BUFFER_SIZE];
 
-  scanf ("%s %s", name, number);
-
-  int i = n - 1;
-  while (i >= 0 && strcmp (names[i], name) > 0)
+  // scanf("%s %s", name, number);
+  while ((token = strtok (NULL, delim)) != NULL)
     {
-      names[i + 1] = names[i];
-      numbers[i + 1] = numbers[i];
-      i--;
+      count++;
+      if (count == 1)
+        strcpy (name, token);
+      else if (count == 2)
+        strcpy (number, token);
     }
 
-  names[i + 1] = _strdup (name);
-  numbers[i + 1] = _strdup (number);
+  if (count == 2)
+    {
+      int i = n - 1;
+      while (i >= 0 && strcmp (names[i], name) > 0)
+        {
+          names[i + 1] = names[i];
+          numbers[i + 1] = numbers[i];
+          i--;
+        }
 
-  n++;
-  printf ("%s was added successfully\n", name);
+      names[i + 1] = _strdup (name);
+      numbers[i + 1] = _strdup (number);
+
+      n++;
+      printf ("%s was added successfully\n", name);
+    }
+
+  else
+    printf ("Invalid arguments\n");
 }
 
 void
@@ -195,26 +206,43 @@ void delete ()
 void
 save ()
 {
+  int count = 0;
+
   char file_name[BUFFER_SIZE];
   char tmp[BUFFER_SIZE];
 
-  scanf ("%s", tmp);
-  scanf ("%s", file_name);
+  // scanf("%s", tmp);
+  // scanf("%s", file_name);
 
-  FILE *fp = fopen (file_name, "w");
-  if (fp == NULL)
+  while ((token = strtok (NULL, delim)) != NULL)
     {
-      printf ("Open failed");
-      return;
+      count++;
+      if (count == 1)
+        strcpy (tmp, token);
+      else if (count == 2)
+        strcpy (file_name, token);
     }
 
-  for (int i = 0; i < n; i++)
+  if (count == 2 && (strcmp (tmp, "as") == 0))
     {
-      fprintf (fp, "%s ", names[i]);
-      fprintf (fp, "%s\n", numbers[i]);
+      FILE *fp = fopen (file_name, "w");
+      if (fp == NULL)
+        {
+          printf ("Open failed");
+          return;
+        }
+
+      for (int i = 0; i < n; i++)
+        {
+          fprintf (fp, "%s ", names[i]);
+          fprintf (fp, "%s\n", numbers[i]);
+        }
+
+      fclose (fp);
     }
 
-  fclose (fp);
+  else
+    printf ("Invalid command format.\n");
 }
 
 void
