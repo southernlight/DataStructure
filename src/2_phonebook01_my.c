@@ -10,6 +10,14 @@
 char **names;
 char **numbers;
 
+typedef struct person
+{
+  char *name;
+  char *numbers;
+  char *email;
+  char *group;
+} Person;
+
 int capacity = INIT_CAPACITY; /* size of array */
 int n = 0;                    /* number of people in phone directory */
 
