@@ -100,8 +100,6 @@ process_command ()
             printf ("Invalid arguments\n");
           else
             handle_add (name_str);
-
-          fgetc (stdin);
         }
 
       else if (strcmp (command, "find") == 0)
@@ -372,6 +370,9 @@ handle_add (char *name_str)
   scanf ("%s", email_buf);
   printf ("Group: ");
   scanf ("%s", group_buf);
+
+  while (fgetc (stdin) != '\n')
+    continue;
 
   registrant.name = _strdup (name_str);
   registrant.number = _strdup (number_buf);
