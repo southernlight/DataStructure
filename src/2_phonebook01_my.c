@@ -4,13 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define INIT_CAPACITY 3
 #define CAPACITY 100
 #define BUFFER_LENGTH 100
-#define BUFFER_SIZE 50
-
-char **names;
-char **numbers;
 
 typedef struct person
 {
@@ -20,23 +15,19 @@ typedef struct person
   char *group;
 } Person;
 
-int capacity = INIT_CAPACITY; /* size of array */
 Person directory[CAPACITY];
 
 int n = 0; /* number of people in phone directory */
 char delim[] = " ";
 
-// char command[BUFFER_SIZE];
-
 /* function prototypes */
 
 // functions in main.
-void init_directory ();
 void process_command ();
 
 // functions for command
 void load (char *fileName);
-void add (char *name, char *number);
+void handle_add (char *name_str);
 void find (char *name);
 void status ();
 void delete ();
@@ -44,38 +35,30 @@ void save (char *fileName);
 
 int search (char *name);
 int read_line (FILE *fp, char str[], int limit);
-void sort (char *names[]);
-void reallocate ();
 int compose_name (char *name_str, int limit);
-void handle_add (name_str);
+void handle_add (char *name_str);
+void print_person (Person person);
+void add (char *name, char *number, char *email, char *group);
 
 int
 main ()
 {
-  init_directory ();
   process_command ();
 
   return 0;
 }
 
 void
-init_directory ()
-{
-  names = (char **)malloc (INIT_CAPACITY * sizeof (char *));
-  numbers = (char **)malloc (INIT_CAPACITY * sizeof (char *));
-}
-
-void
 process_command ()
 {
-  char command_line[BUFFER_SIZE];
+  char command_line[BUFFER_LENGTH];
   char *command, *argument;
-  char name_str[BUFFER_LENGTH]; // 사람이름
+  char name_str[BUFFER_LENGTH];
 
   while (1)
     {
       printf ("$ ");
-      if (read_line (stdin, command_line, BUFFER_SIZE) <= 0)
+      if (read_line (stdin, command_line, BUFFER_LENGTH) <= 0)
         continue;
 
       command = strtok (command_line, delim);
@@ -93,8 +76,6 @@ process_command ()
 
       else if (strcmp (command, "add") == 0)
         {
-          // int k=compose_name(name_str, BUFFER_LENGTH);
-          // printf("%s %d\n", name_str, k);
 
           if (compose_name (name_str, BUFFER_LENGTH) == 0)
             printf ("Invalid arguments\n");
@@ -104,14 +85,10 @@ process_command ()
 
       else if (strcmp (command, "find") == 0)
         {
-          argument = strtok (NULL, delim);
-          if (argument == NULL)
-            {
-              printf ("Invalid arguments\n");
-              continue;
-            }
-
-          find (argument);
+          if (compose_name (name_str, BUFFER_LENGTH) == 0)
+            printf ("Invalid arguments\n");
+          else
+            find (name_str);
         }
 
       else if (strcmp (command, "status") == 0)
@@ -119,26 +96,25 @@ process_command ()
 
       else if (strcmp (command, "delete") == 0)
         {
-          argument = strtok (NULL, delim);
-          if (argument == NULL)
+          if (compose_name (name_str, BUFFER_LENGTH) == 0)
+            printf ("Invalid arguments\n");
+          else
             {
-              printf ("Invalid arguments\n");
-              continue;
+              delete (name_str);
             }
-
-          delete (argument);
         }
 
       else if (strcmp (command, "save") == 0)
         {
-          argument = strtok (NULL, delim); // as
+          argument = strtok (NULL, delim);
           if (argument == NULL || strcmp (argument, "as") != 0)
             {
               printf ("Invalid command format.\n");
               continue;
             }
 
-          save (name_str);
+          argument = strtok (NULL, delim);
+          save (argument);
         }
 
       else if (strcmp (command, "exit") == 0)
@@ -149,9 +125,8 @@ process_command ()
 void
 load (char *fileName)
 {
-
-  char name[BUFFER_SIZE];
-  char number[BUFFER_SIZE];
+  char buffer[BUFFER_LENGTH];
+  char *name, *number, *email, *group;
 
   FILE *fp = fopen (fileName, "r");
   if (fp == NULL)
@@ -160,33 +135,35 @@ load (char *fileName)
       return;
     }
 
-  while ((fscanf (fp, "%s %s", name, number)) != EOF)
+  while ((read_line (fp, buffer, BUFFER_LENGTH) > 0))
     {
-      add (name, number);
+      name = strtok (buffer, "#");
+      number = strtok (NULL, "#");
+      email = strtok (NULL, "#");
+      group = strtok (NULL, "#");
+
+      add (name, number, email, group);
     }
 
   fclose (fp);
 }
 
 void
-add (char *name, char *number)
+handle_add (char *name_str)
 {
-  if (n >= capacity)
-    reallocate ();
+  char number_buf[BUFFER_LENGTH], email_buf[BUFFER_LENGTH],
+      group_buf[BUFFER_LENGTH];
 
-  int i = n - 1;
-  while (i >= 0 && strcmp (names[i], name) > 0)
-    {
-      names[i + 1] = names[i];
-      numbers[i + 1] = numbers[i];
-      i--;
-    }
+  printf ("  Phone: ");
+  read_line (stdin, number_buf, BUFFER_LENGTH);
+  printf ("  Email: ");
+  read_line (stdin, email_buf, BUFFER_LENGTH);
+  printf ("  Group: ");
+  read_line (stdin, group_buf, BUFFER_LENGTH);
 
-  names[i + 1] = _strdup (name);
-  numbers[i + 1] = _strdup (number);
+  add (name_str, number_buf, email_buf, group_buf);
 
-  n++;
-  printf ("%s was added successfully\n", name);
+  printf ("%s was added successfully.\n", name_str);
 }
 
 void
@@ -197,14 +174,19 @@ find (char *name)
   if (index == -1)
     printf ("No person named '%s' exists\n", name);
   else
-    printf ("%s\n", numbers[index]);
+    {
+      printf ("%s:\n", directory[index].name);
+      printf ("  Phone: %s\n", directory[index].number);
+      printf ("  Email: %s\n", directory[index].email);
+      printf ("  Group: %s\n", directory[index].group);
+    }
 }
 
 void
 status ()
 {
   for (int i = 0; i < n; i++)
-    printf ("%s %s\n", *(names + i), *(numbers + i));
+    print_person (directory[i]);
   printf ("Total %d persons.\n", n);
 }
 
@@ -217,8 +199,7 @@ void delete (char *name)
   int j = index;
   for (; j < n - 1; j++)
     {
-      names[j] = names[j + 1];
-      numbers[j] = numbers[j + 1];
+      directory[j] = directory[j + 1];
     }
 
   n--;
@@ -238,48 +219,32 @@ save (char *fileName)
 
   for (int i = 0; i < n; i++)
     {
-      fprintf (fp, "%s ", names[i]);
-      fprintf (fp, "%s\n", numbers[i]);
+
+      fprintf (fp, "%s", directory[i].name);
+      fprintf (fp, "#");
+
+      if ((strcmp (directory[i].number, "")) == 0)
+        fprintf (fp, " ");
+      else
+        fprintf (fp, "%s", directory[i].number);
+      fprintf (fp, "#");
+
+      if ((strcmp (directory[i].email, "")) == 0)
+        fprintf (fp, " ");
+      else
+        fprintf (fp, "%s", directory[i].email);
+      fprintf (fp, "#");
+
+      if ((strcmp (directory[i].group, "")) == 0)
+        fprintf (fp, " ");
+      else
+        fprintf (fp, "%s", directory[i].group);
+      fprintf (fp, "#");
+
+      fprintf (fp, "\n");
     }
 
   fclose (fp);
-}
-
-void
-sort (char *names[])
-{
-  int min;
-  int length = 0;
-  char *temp;
-
-  while (names[length] != '\0')
-    length++;
-
-  for (int i = 0; i < length; i++)
-    {
-      min = i;
-      for (int j = i + 1; j < length; j++)
-        {
-
-          for (int k = 0; k < strlen (names[j]); k++)
-            {
-              if (names[j][k] < names[min][k])
-                {
-                  min = j;
-                  break;
-                }
-
-              else if (names[j][k] > names[min][k])
-                break;
-              else
-                continue;
-            }
-        }
-
-      temp = names[min];
-      names[min] = names[i];
-      names[i] = temp;
-    }
 }
 
 int
@@ -287,7 +252,7 @@ search (char *name)
 {
   for (int i = 0; i < n; i++)
     {
-      if (strcmp (name, names[i]) == 0)
+      if (strcmp (name, directory[i].name) == 0)
         return i;
     }
 
@@ -306,26 +271,6 @@ read_line (FILE *fp, char str[], int limit)
   str[i] = '\0';
 
   return i;
-}
-
-void
-reallocate ()
-{
-  capacity *= 2;
-  char **new_names = (char **)malloc (capacity * sizeof (char *));
-  char **new_numbers = (char **)malloc (capacity * sizeof (char *));
-
-  for (int i = 0; i < n; i++)
-    {
-      new_names[i] = names[i];
-      new_numbers[i] = numbers[i];
-    }
-
-  free (names);
-  free (numbers);
-
-  names = new_names;
-  numbers = new_numbers;
 }
 
 int
@@ -359,31 +304,30 @@ compose_name (char *name_str, int limit)
 }
 
 void
-handle_add (char *name_str)
+print_person (Person p)
 {
-  char number_buf[100], email_buf[100], group_buf[100];
-  Person registrant = { " ", " ", " ", " " };
+  printf ("%s:\n", p.name);
+  printf ("  Phone: %s\n", p.number);
+  printf ("  Email: %s\n", p.email);
+  printf ("  Group: %s\n", p.group);
+  printf ("\n");
+}
 
-  printf ("Phone: ");
-  scanf ("%s", number_buf);
-  printf ("Email: ");
-  scanf ("%s", email_buf);
-  printf ("Group: ");
-  scanf ("%s", group_buf);
+void
+add (char *name, char *number, char *email, char *group)
+{
 
-  while (fgetc (stdin) != '\n')
-    continue;
+  int i = n - 1;
+  while (i >= 0 && strcmp (directory[i].name, name) > 0)
+    {
+      directory[i + 1] = directory[i];
+      i--;
+    }
 
-  registrant.name = _strdup (name_str);
-  registrant.number = _strdup (number_buf);
-  registrant.email = _strdup (email_buf);
-  registrant.group = _strdup (group_buf);
+  directory[i + 1].name = _strdup (name);
+  directory[i + 1].number = _strdup (number);
+  directory[i + 1].email = _strdup (email);
+  directory[i + 1].group = _strdup (group);
 
-  // printf("%s %s %s %s\n", registrant.name, registrant.number,
-  // registrant.email, registrant.group);
-
-  directory[n] = registrant;
   n++;
-
-  printf ("%s was added successfully.\n", name_str);
 }
