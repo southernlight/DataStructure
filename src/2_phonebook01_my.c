@@ -15,7 +15,7 @@ typedef struct person
   char *group;
 } Person;
 
-Person directory[CAPACITY];
+Person *directory[CAPACITY];
 
 int n = 0; /* number of people in phone directory */
 char delim[] = " ";
@@ -24,10 +24,9 @@ char delim[] = " ";
 
 // functions in main.
 void process_command ();
-
 // functions for command
 void load (char *fileName);
-void handle_add (char *name_str);
+void handle_add (name_str);
 void find (char *name);
 void status ();
 void delete ();
@@ -36,14 +35,26 @@ void save (char *fileName);
 int search (char *name);
 int read_line (FILE *fp, char str[], int limit);
 int compose_name (char *name_str, int limit);
-void handle_add (char *name_str);
+void handle_add (char *name);
 void print_person (Person person);
 void add (char *name, char *number, char *email, char *group);
 
 int
 main ()
 {
-  process_command ();
+  // process_command();
+
+  typedef struct test
+  {
+    char *a;
+    char *b;
+    char *c;
+  } Test;
+
+  Test **test_array;
+  char *my_word = "abcdef";
+
+  test_array = (Test **)malloc (3 * sizeof (Test));
 
   return 0;
 }
@@ -141,7 +152,6 @@ load (char *fileName)
       number = strtok (NULL, "#");
       email = strtok (NULL, "#");
       group = strtok (NULL, "#");
-
       add (name, number, email, group);
     }
 
@@ -149,21 +159,23 @@ load (char *fileName)
 }
 
 void
-handle_add (char *name_str)
+handle_add (char *name)
 {
-  char number_buf[BUFFER_LENGTH], email_buf[BUFFER_LENGTH],
-      group_buf[BUFFER_LENGTH];
+  char number[BUFFER_LENGTH], email[BUFFER_LENGTH], group[BUFFER_LENGTH];
+  char empty[] = " ";
 
   printf ("  Phone: ");
-  read_line (stdin, number_buf, BUFFER_LENGTH);
+  read_line (stdin, number, BUFFER_LENGTH);
   printf ("  Email: ");
-  read_line (stdin, email_buf, BUFFER_LENGTH);
+  read_line (stdin, email, BUFFER_LENGTH);
   printf ("  Group: ");
-  read_line (stdin, group_buf, BUFFER_LENGTH);
+  read_line (stdin, group, BUFFER_LENGTH);
 
-  add (name_str, number_buf, email_buf, group_buf);
+  add (name, (char *)(strlen (number) > 0 ? number : empty),
+       (char *)(strlen (email) > 0 ? email : empty),
+       (char *)(strlen (email) > 0 ? group : empty));
 
-  printf ("%s was added successfully.\n", name_str);
+  printf ("%s was added successfully.\n", name);
 }
 
 void
@@ -175,10 +187,10 @@ find (char *name)
     printf ("No person named '%s' exists\n", name);
   else
     {
-      printf ("%s:\n", directory[index].name);
-      printf ("  Phone: %s\n", directory[index].number);
-      printf ("  Email: %s\n", directory[index].email);
-      printf ("  Group: %s\n", directory[index].group);
+      printf ("%s:\n", directory[index]->name);
+      printf ("  Phone: %s\n", directory[index]->number);
+      printf ("  Email: %s\n", directory[index]->email);
+      printf ("  Group: %s\n", directory[index]->group);
     }
 }
 
@@ -186,7 +198,7 @@ void
 status ()
 {
   for (int i = 0; i < n; i++)
-    print_person (directory[i]);
+    print_person (*(directory[i]));
   printf ("Total %d persons.\n", n);
 }
 
@@ -220,25 +232,25 @@ save (char *fileName)
   for (int i = 0; i < n; i++)
     {
 
-      fprintf (fp, "%s", directory[i].name);
+      fprintf (fp, "%s", directory[i]->name);
       fprintf (fp, "#");
 
-      if ((strcmp (directory[i].number, "")) == 0)
+      if ((strcmp (directory[i]->number, "")) == 0)
         fprintf (fp, " ");
       else
-        fprintf (fp, "%s", directory[i].number);
+        fprintf (fp, "%s", directory[i]->number);
       fprintf (fp, "#");
 
-      if ((strcmp (directory[i].email, "")) == 0)
+      if ((strcmp (directory[i]->email, "")) == 0)
         fprintf (fp, " ");
       else
-        fprintf (fp, "%s", directory[i].email);
+        fprintf (fp, "%s", directory[i]->email);
       fprintf (fp, "#");
 
-      if ((strcmp (directory[i].group, "")) == 0)
+      if ((strcmp (directory[i]->group, "")) == 0)
         fprintf (fp, " ");
       else
-        fprintf (fp, "%s", directory[i].group);
+        fprintf (fp, "%s", directory[i]->group);
       fprintf (fp, "#");
 
       fprintf (fp, "\n");
@@ -252,7 +264,7 @@ search (char *name)
 {
   for (int i = 0; i < n; i++)
     {
-      if (strcmp (name, directory[i].name) == 0)
+      if (strcmp (name, directory[i]->name) == 0)
         return i;
     }
 
@@ -318,16 +330,15 @@ add (char *name, char *number, char *email, char *group)
 {
 
   int i = n - 1;
-  while (i >= 0 && strcmp (directory[i].name, name) > 0)
+  while (i >= 0 && strcmp (directory[i]->name, name) > 0)
     {
       directory[i + 1] = directory[i];
       i--;
     }
 
-  directory[i + 1].name = _strdup (name);
-  directory[i + 1].number = _strdup (number);
-  directory[i + 1].email = _strdup (email);
-  directory[i + 1].group = _strdup (group);
-
+  directory[i + 1]->name = _strdup (name);
+  directory[i + 1]->number = _strdup (number);
+  directory[i + 1]->email = _strdup (email);
+  directory[i + 1]->group = _strdup (group);
   n++;
 }
