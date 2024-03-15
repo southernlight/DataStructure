@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CAPACITY 100
 #define BUFFER_LENGTH 100
 #define INIT_CAPACITY 2
 
@@ -18,9 +17,8 @@ typedef struct person
 
 Person **directory;
 
-int n; /* number of people in phone directory */
 int capacity = 0;
-char delim[] = " ";
+int n;
 
 /* function prototypes */
 
@@ -29,7 +27,7 @@ void init ();
 void process_command ();
 // functions for command
 void load (char *fileName);
-void handle_add (char *name_str);
+void handle_add (char *name);
 void find (char *name);
 void status ();
 void delete ();
@@ -38,25 +36,16 @@ void save (char *fileName);
 int search (char *name);
 int read_line (FILE *fp, char str[], int limit);
 int compose_name (char *name_str, int limit);
-void handle_add (char *name);
 void print_person (Person *person);
 void add (char *name, char *number, char *email, char *group);
 void reallocate ();
+void release_person (Person *p);
 
 int
 main ()
 {
   init ();
   process_command ();
-
-  /* Person* list[4];
-   list[0] = (Person*)malloc(sizeof(Person));
-   list[0]->email = _strdup("Kim");
-   if (list[0]->email == NULL)
-       fprintf("stderr", "error");
-
-
-   printf("%s ", list[0]->email);*/
 
   return 0;
 }
@@ -82,11 +71,11 @@ process_command ()
       if (read_line (stdin, command_line, BUFFER_LENGTH) <= 0)
         continue;
 
-      command = strtok (command_line, delim);
+      command = strtok (command_line, " ");
 
       if (strcmp (command, "read") == 0)
         {
-          argument = strtok (NULL, delim);
+          argument = strtok (NULL, " ");
           if (argument == NULL)
             {
               printf ("File name required\n");
@@ -127,14 +116,14 @@ process_command ()
 
       else if (strcmp (command, "save") == 0)
         {
-          argument = strtok (NULL, delim);
+          argument = strtok (NULL, " ");
           if (argument == NULL || strcmp (argument, "as") != 0)
             {
               printf ("Invalid command format.\n");
               continue;
             }
 
-          argument = strtok (NULL, delim);
+          argument = strtok (NULL, " ");
           save (argument);
         }
 
@@ -148,6 +137,7 @@ load (char *fileName)
 {
   char buffer[BUFFER_LENGTH];
   char *name, *number, *email, *group;
+  char *token;
 
   FILE *fp = fopen (fileName, "r");
   if (fp == NULL)
@@ -159,10 +149,25 @@ load (char *fileName)
   while ((read_line (fp, buffer, BUFFER_LENGTH) > 0))
     {
       name = strtok (buffer, "#");
-      number = strtok (NULL, "#");
-      email = strtok (NULL, "#");
-      group = strtok (NULL, "#");
-      add (name, number, email, group);
+      token = strtok (NULL, "#");
+      if (strcmp (token, " ") == 0)
+        number = NULL;
+      else
+        number = _strdup (token);
+
+      token = strtok (NULL, "#");
+      if (strcmp (token, " ") == 0)
+        email = NULL;
+      else
+        email = _strdup (token);
+
+      token = strtok (NULL, "#");
+      if (strcmp (token, " ") == 0)
+        group = NULL;
+      else
+        group = _strdup (token);
+
+      add (_strdup (name), number, email, group);
     }
 
   fclose (fp);
@@ -172,7 +177,6 @@ void
 handle_add (char *name)
 {
   char number[BUFFER_LENGTH], email[BUFFER_LENGTH], group[BUFFER_LENGTH];
-  char empty[] = " ";
 
   printf ("  Phone: ");
   read_line (stdin, number, BUFFER_LENGTH);
@@ -181,9 +185,9 @@ handle_add (char *name)
   printf ("  Group: ");
   read_line (stdin, group, BUFFER_LENGTH);
 
-  add (name, (char *)(strlen (number) > 0 ? number : empty),
-       (char *)(strlen (email) > 0 ? email : empty),
-       (char *)(strlen (email) > 0 ? group : empty));
+  add (_strdup (name), (char *)(strlen (number) > 0 ? _strdup (number) : NULL),
+       (char *)(strlen (email) > 0 ? _strdup (email) : NULL),
+       (char *)(strlen (group) > 0 ? _strdup (group) : NULL));
 
   printf ("%s was added successfully.\n", name);
 }
@@ -218,13 +222,11 @@ void delete (char *name)
   if (index == -1)
     printf ("No person named %s exists.\n", name);
 
-  int j = index;
-  for (; j < n - 1; j++)
-    {
-      directory[j] = directory[j + 1];
-    }
-
+  Person *p = directory[index];
+  for (int j = index; j < n - 1; j++)
+    directory[j] = directory[j + 1];
   n--;
+  release_person (p);
   printf ("'%s' was deleted successfully.\n", name);
 }
 
@@ -241,23 +243,22 @@ save (char *fileName)
 
   for (int i = 0; i < n; i++)
     {
-
       fprintf (fp, "%s", directory[i]->name);
       fprintf (fp, "#");
 
-      if ((strcmp (directory[i]->number, "")) == 0)
+      if (directory[i]->number == NULL)
         fprintf (fp, " ");
       else
         fprintf (fp, "%s", directory[i]->number);
       fprintf (fp, "#");
 
-      if ((strcmp (directory[i]->email, "")) == 0)
+      if (directory[i]->email == NULL)
         fprintf (fp, " ");
       else
         fprintf (fp, "%s", directory[i]->email);
       fprintf (fp, "#");
 
-      if ((strcmp (directory[i]->group, "")) == 0)
+      if (directory[i]->group == NULL)
         fprintf (fp, " ");
       else
         fprintf (fp, "%s", directory[i]->group);
@@ -317,7 +318,7 @@ compose_name (char *name_str, int limit)
         }
       length += strlen (ptr) + 1;
 
-      ptr = strtok (NULL, delim);
+      ptr = strtok (NULL, " ");
     }
 
   name_str[length - 1] = '\0';
@@ -338,8 +339,8 @@ print_person (Person *p)
 void
 add (char *name, char *number, char *email, char *group)
 {
-  // if (n >= capacity)
-  // reallocate();
+  if (n >= capacity)
+    reallocate ();
 
   int i = n - 1;
   while (i >= 0 && strcmp (directory[i]->name, name) > 0)
@@ -349,10 +350,10 @@ add (char *name, char *number, char *email, char *group)
     }
   directory[i + 1] = (Person *)malloc (sizeof (Person));
 
-  directory[i + 1]->name = _strdup (name);
-  directory[i + 1]->number = _strdup (number);
-  directory[i + 1]->email = _strdup (email);
-  directory[i + 1]->group = _strdup (group);
+  directory[i + 1]->name = name;
+  directory[i + 1]->number = number;
+  directory[i + 1]->email = email;
+  directory[i + 1]->group = group;
 
   n++;
 }
@@ -360,7 +361,25 @@ add (char *name, char *number, char *email, char *group)
 void
 reallocate ()
 {
+  capacity *= 2;
+  Person **tmp = (Person **)malloc (capacity * sizeof (Person *));
+  for (int i = 0; i < n; i++)
+    {
+      tmp[i] = directory[i];
+    }
   free (directory);
-  capacity = 2 * n;
-  directory = (Person **)malloc (capacity * sizeof (Person *));
+  directory = tmp;
+}
+
+void
+release_person (Person *p)
+{
+  free (p->name);
+  if (p->number != NULL)
+    free (p->number);
+  if (p->email != NULL)
+    free (p->email);
+  if (p->group != NULL)
+    free (p->group);
+  free (p);
 }
