@@ -6,6 +6,7 @@
 
 #define CAPACITY 100
 #define BUFFER_LENGTH 100
+#define INIT_CAPACITY 2
 
 typedef struct person
 {
@@ -15,18 +16,20 @@ typedef struct person
   char *group;
 } Person;
 
-Person *directory[CAPACITY];
+Person **directory;
 
-int n = 0; /* number of people in phone directory */
+int n; /* number of people in phone directory */
+int capacity = 0;
 char delim[] = " ";
 
 /* function prototypes */
 
 // functions in main.
+void init ();
 void process_command ();
 // functions for command
 void load (char *fileName);
-void handle_add (name_str);
+void handle_add (char *name_str);
 void find (char *name);
 void status ();
 void delete ();
@@ -36,27 +39,34 @@ int search (char *name);
 int read_line (FILE *fp, char str[], int limit);
 int compose_name (char *name_str, int limit);
 void handle_add (char *name);
-void print_person (Person person);
+void print_person (Person *person);
 void add (char *name, char *number, char *email, char *group);
+void reallocate ();
 
 int
 main ()
 {
-  // process_command();
+  init ();
+  process_command ();
 
-  typedef struct test
-  {
-    char *a;
-    char *b;
-    char *c;
-  } Test;
+  /* Person* list[4];
+   list[0] = (Person*)malloc(sizeof(Person));
+   list[0]->email = _strdup("Kim");
+   if (list[0]->email == NULL)
+       fprintf("stderr", "error");
 
-  Test **test_array;
-  char *my_word = "abcdef";
 
-  test_array = (Test **)malloc (3 * sizeof (Test));
+   printf("%s ", list[0]->email);*/
 
   return 0;
+}
+
+void
+init ()
+{
+  directory = (Person **)malloc (INIT_CAPACITY * sizeof (Person *));
+  capacity = INIT_CAPACITY;
+  n = 0;
 }
 
 void
@@ -198,7 +208,7 @@ void
 status ()
 {
   for (int i = 0; i < n; i++)
-    print_person (*(directory[i]));
+    print_person (directory[i]);
   printf ("Total %d persons.\n", n);
 }
 
@@ -316,18 +326,20 @@ compose_name (char *name_str, int limit)
 }
 
 void
-print_person (Person p)
+print_person (Person *p)
 {
-  printf ("%s:\n", p.name);
-  printf ("  Phone: %s\n", p.number);
-  printf ("  Email: %s\n", p.email);
-  printf ("  Group: %s\n", p.group);
+  printf ("%s:\n", p->name);
+  printf ("  Phone: %s\n", p->number);
+  printf ("  Email: %s\n", p->email);
+  printf ("  Group: %s\n", p->group);
   printf ("\n");
 }
 
 void
 add (char *name, char *number, char *email, char *group)
 {
+  // if (n >= capacity)
+  // reallocate();
 
   int i = n - 1;
   while (i >= 0 && strcmp (directory[i]->name, name) > 0)
@@ -335,10 +347,20 @@ add (char *name, char *number, char *email, char *group)
       directory[i + 1] = directory[i];
       i--;
     }
+  directory[i + 1] = (Person *)malloc (sizeof (Person));
 
   directory[i + 1]->name = _strdup (name);
   directory[i + 1]->number = _strdup (number);
   directory[i + 1]->email = _strdup (email);
   directory[i + 1]->group = _strdup (group);
+
   n++;
+}
+
+void
+reallocate ()
+{
+  free (directory);
+  capacity = 2 * n;
+  directory = (Person **)malloc (capacity * sizeof (Person *));
 }
