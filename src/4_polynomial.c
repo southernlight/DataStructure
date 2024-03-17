@@ -21,71 +21,93 @@ typedef struct polynomial
 
 } Polynomial;
 
-Polynomial *p;
-Term *t;
+Polynomial *polys[BUFFER_SIZE];
+int n = 0;
 
-char fx[BUFFER_SIZE];
+void process_command ();
+void handle_calc (char poly_name, char *input_value);
+void handle_print (char poly_name);
+void handle_definition (char *poly);
 
 Polynomial *create_polynomial_instance (char name);
 Term *create_term_instance ();
-
-int read_line (char str[], int limit);
-void compress_str (char str[]);
-void put (char *str, Term *t);
-void get_CoefAndExpo (char *coef, char *expo);
+int read_line (char *str, int limit);
+int compress (char *str);
+void add_term (int c, int e, Polynomial *poly);
 
 int
 main ()
 {
-  read_line (fx, BUFFER_SIZE);
-  compress_str (fx);
-
-  p = create_polynomial_instance (fx[0]);
-
-  char buffer[BUFFER_SIZE];
-  int index = 0;
-
-  for (int i = 2; i < strlen (fx); i++)
-    {
-      if (i == 2)
-        {
-          buffer[index++] = fx[i];
-          t = create_term_instance ();
-          p->first = t;
-        }
-      else
-        {
-          if ((fx[i] == '+' || fx[i] == '-'))
-            {
-              buffer[index] = '\0';
-              put (buffer, t);
-              t->next = create_term_instance ();
-              t = t->next;
-
-              index = 0;
-              buffer[index++] = fx[i];
-            }
-
-          else
-            {
-              buffer[index++] = fx[i];
-            }
-        }
-    }
-
-  buffer[index] = '\0';
-  put (buffer, t);
-  t->next = NULL;
-
-  Term *ptr = p->first;
-
-  while (ptr != NULL)
-    {
-      printf ("%d \n", ptr->coef);
-      ptr = ptr->next;
-    }
+  process_command ();
 
   return 0;
+}
+
+void
+process_command ()
+{
+  char command_line[BUFFER_SIZE];
+  char *command, *arg1, *arg2;
+  char copied[BUFFER_SIZE];
+
+  while (1)
+    {
+      printf ("$ ");
+      if (read_line (command_line, BUFFER_SIZE) <= 0)
+        continue;
+      strcpy (copied, command_line);
+      command = strtok (command_line, " ");
+
+      if (strcmp (command, "calc") == 0)
+        {
+          arg1 = strtok (NULL, " ");
+          arg2 = strtok (NULL, " ");
+
+          if (arg1 == NULL || arg2 == NULL)
+            {
+              printf ("Invalid arguments.\n");
+              continue;
+            }
+          handle_calc (arg1[0], arg2);
+        }
+
+      else if (strcmp (command, "print") == 0)
+        {
+          arg1 = strtok (NULL, " ");
+          if (arg1 == NULL)
+            {
+              printf ("Invalid arguments.\n");
+              continue;
+            }
+          handle_print (arg1[0]);
+        }
+
+      else if (strcmp (command, "exit") == 0)
+        break;
+
+      else
+        {
+          handle_definition (copied);
+        }
+    }
+}
+
+void
+handle_calc (char poly_name, char *input_value)
+{
+  ;
+}
+void
+handle_print (char poly_name)
+{
+  ;
+}
+void
+handle_definition (char *poly)
+{
+  int length;
+  length = compress (poly);
+  polys[n++] = create_polynomial_instance (poly[0]);
 }
 
 Polynomial *
@@ -111,7 +133,7 @@ create_term_instance ()
 }
 
 int
-read_line (char str[], int limit)
+read_line (char *str, int limit)
 {
   int ch, i = 0;
 
@@ -126,8 +148,8 @@ read_line (char str[], int limit)
   return i;
 }
 
-void
-compress_str (char str[])
+int
+compress (char *str)
 {
   int n = 0;
   for (int i = 0; i < strlen (str); i++)
@@ -138,62 +160,33 @@ compress_str (char str[])
         }
     }
   str[n] = '\0';
+
+  return n;
 }
 
 void
-put (char *str)
+add_term (int c, int e, Polynomial *poly)
 {
-  char coef[BUFFER_SIZE];
-  char expo[BUFFER_SIZE];
-
-  get_CoefAndExpo (str, coef, expo);
-
-  if (strcmp (coef, "\0") == 0 || strcmp (coef, "+") == 0)
-    {
-      coef[0] = '1';
-      coef[1] = '\0';
-    }
-
-  if (strcmp (coef, "-") == 0)
-    {
-      coef[0] = '-';
-      coef[1] = '1';
-      coef[2] = '\0';
-    }
-
-  if (strcmp (expo, "\0") == 0)
-    {
-      expo[0] = '1';
-      expo[1] = '\0';
-    }
-
-  t->coef = atoi (coef);
-  t->expo = atoi (expo);
+  ;
 }
 
-void
-get_CoefAndExpo (char *str, char *coef, char *expo)
+Term *
+find (Polynomial *poly, int e)
 {
-  int flag = 0, c = 0, e = 0;
-  for (int i = 0; i < strlen (str); i++)
+  Term *t = poly->first;
+
+  while (t != NULL)
     {
-      if (str[i] == 'x' || str[i] == '^')
-        {
-          flag = 1;
-          continue;
-        }
-
-      if (flag == 0)
-        {
-          coef[c++] = str[i];
-        }
-
-      else if (flag == 1)
-        {
-          expo[e++] = str[i];
-        }
+      if (t->expo <= e)
+        return t;
+      t = t->next;
     }
 
-  coef[c] = '\0';
-  expo[e] = '\0';
+  return NULL;
+}
+
+int
+add_after (Term *prev, int c, int e)
+{
+  ;
 }
