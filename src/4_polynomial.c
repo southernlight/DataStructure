@@ -45,12 +45,18 @@ void add_first (int c, int e, Polynomial *poly);
 void add_after (int c, int e, Term *prev);
 int eval_poly (Polynomial *poly, int x);
 int eval_term (Term *, int x);
+void print_poly (Polynomial *p);
+void print_term (Term *pTerm, const Term *head);
 Polynomial *findPolyByName (char poly_name);
+void insert_polynomial (Polynomial *ptr_poly);
+void destroy_polynomial (Polynomial *ptr_poly);
 
 int
 main ()
 {
-  process_command ();
+  // process_command();
+
+  printf ("%d", atoi ("-"));
 
   return 0;
 }
@@ -141,26 +147,66 @@ create_by_parse_polynomial (char name, char *body)
 }
 
 int
-parse_and_add_term (char *expr, int begin, int end, int polynomial)
+parse_and_add_term (char *expr, int begin, int end, Polynomial *p_poly)
 {
-  int buffer_index = 0;
+  int i = begin;
+  int c_index = 0, e_index = 0;
+  int sign_coef = 1;      //-1: 음수 1: 양수
+  int coef = 0, expo = 1; // coef 는 계수의 절댓값
+
   char buffer_coef[BUFFER_SIZE];
   char buffer_expo[BUFFER_SIZE];
 
-  int sign_coef = 1;      // 0: 음수 1: 양수
-  int coef = 0, expo = 1; // coef 는 계수의 절댓값
   if (expr[begin] == '+' || (expr[begin] >= '1' && expr[begin] <= '9'))
     sign_coef = 1; // 양수
   else if (expr[begin] == '-')
-    sign_coef = 0; // 음수
+    sign_coef = -1; // 음수
 
-  for (int i = begin; i < end; i++)
+  while ((i < end)
+         && ((expr[i] >= '0' && expr[i] <= '9')
+             || (expr[i] == '+' || expr[i] == '-')))
     {
-      if (expr[i] >= '0' && expr[i] <= '9')
-        buffer_coef[buffer_index++] = expr[i];
-      if (expr[i] == 'x' || '^')
-        break;
+      buffer_coef[c_index++] = expr[i];
+      i++;
     }
+  buffer_coef[c_index] = '\0';
+
+  if (coef == 0) // coef 가 0인 경우->계수가 1또는 -1인 x -x를 나타낸다.
+    coef = 1;
+
+  coef = sign_coef * abs (atoi (buffer_coef));
+  if (i == end) // 문자를 다 읽은 경우->상수항
+    {
+      add_term (coef, expo, p_poly);
+      return 1;
+    }
+
+  if (expr[i] != 'x')
+    return 0;
+  i++;
+
+  if (i == end)
+    {
+      add_term (coef, expo, p_poly);
+      return 1;
+    }
+
+  if (expr[i] != '^')
+    return 0;
+  i++;
+
+  for (i; i < end; i++)
+    {
+      if (!(expr[i] > '0' && expr[i] < '9'))
+        return 0;
+      buffer_expo[e_index++] = expr[i];
+    }
+
+  buffer_expo[e_index] = '\0';
+  expo = atoi (buffer_expo);
+
+  add_term (coef, expo, p_poly);
+  return 1;
 }
 
 Polynomial *
@@ -370,4 +416,36 @@ findPolyByName (char poly_name)
     }
 
   return NULL;
+}
+
+void
+insert_polynomial (Polynomial *ptr_poly)
+{
+  for (int i = 0; i < n; i++)
+    {
+      if (polys[i]->name == ptr_poly->name)
+        {
+          destroy_polynomial (polys[i]);
+          polys[i] = ptr_poly;
+          return;
+        }
+    }
+  polys[n++] = ptr_poly;
+}
+
+void
+destroy_polynomial (Polynomial *ptr_poly)
+{
+  if (ptr_poly == NULL)
+    return;
+  Term *t = ptr_poly->first, *tmp;
+
+  while (t != NULL)
+    {
+      tmp = t;
+      t = t->next;
+      free (tmp);
+    }
+
+  free (ptr_poly);
 }
