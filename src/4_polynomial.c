@@ -36,7 +36,7 @@ int parse_and_add_term (char *expr, int begin, int end, Polynomial *ptr_poly);
 Polynomial *create_polynomial_instance (char name);
 Term *create_term_instance ();
 int read_line (char *str, int limit);
-int compress (char *str);
+void compress (char *str);
 
 void add_term (int c, int e, Polynomial *poly);
 Term *remove_first (Polynomial *poly);
@@ -46,7 +46,7 @@ void add_after (int c, int e, Term *prev);
 int eval_poly (Polynomial *poly, int x);
 int eval_term (Term *, int x);
 void print_poly (Polynomial *p);
-void print_term (Term *pTerm, const Term *head);
+void print_term (Term *pTerm, Polynomial *poly);
 Polynomial *findPolyByName (char poly_name);
 void insert_polynomial (Polynomial *ptr_poly);
 void destroy_polynomial (Polynomial *ptr_poly);
@@ -54,10 +54,7 @@ void destroy_polynomial (Polynomial *ptr_poly);
 int
 main ()
 {
-  // process_command();
-
-  printf ("%d", atoi ("-"));
-
+  process_command ();
   return 0;
 }
 
@@ -125,8 +122,17 @@ handle_print (char poly_name)
 void
 handle_definition (char *expression)
 {
-  int length;
-  length = compress (expression);
+  char name;
+  char *body;
+  Polynomial *p;
+
+  compress (expression);
+  name = (strtok (expression, "="))[0];
+  body = strtok (NULL, "");
+
+  p = create_by_parse_polynomial (name, body);
+  polys[n] = p;
+  n++;
 }
 
 Polynomial *
@@ -144,6 +150,8 @@ create_by_parse_polynomial (char name, char *body)
       if (body[i] == '+' || body[i] == '-')
         result = parse_and_add_term (body, begin_term, i, ptr_poly);
     }
+
+  return ptr_poly;
 }
 
 int
@@ -171,10 +179,11 @@ parse_and_add_term (char *expr, int begin, int end, Polynomial *p_poly)
     }
   buffer_coef[c_index] = '\0';
 
+  coef = sign_coef * abs (atoi (buffer_coef));
+
   if (coef == 0) // coef 가 0인 경우->계수가 1또는 -1인 x -x를 나타낸다.
     coef = 1;
 
-  coef = sign_coef * abs (atoi (buffer_coef));
   if (i == end) // 문자를 다 읽은 경우->상수항
     {
       add_term (coef, expo, p_poly);
@@ -247,7 +256,7 @@ read_line (char *str, int limit)
   return i;
 }
 
-int
+void
 compress (char *str)
 {
   int n = 0;
@@ -259,14 +268,13 @@ compress (char *str)
         }
     }
   str[n] = '\0';
-
-  return n;
 }
 
 void
 add_term (int c, int e, Polynomial *poly)
 {
-
+  if (c == 0)
+    return;
   Term *p = poly->first;
   Term *q = NULL;
 
@@ -275,70 +283,44 @@ add_term (int c, int e, Polynomial *poly)
       q = p;
       p = p->next;
     }
-  // 동일 차수의 항이 존재하는 경우
-  if (p->expo == e)
+
+  if (p != NULL && p->expo == e)
     {
-      if ((p->expo + e) == 0)
+      p->coef += c;
+      if (p->coef == 0)
         {
-          if (q == NULL)
-            remove_first (poly);
-          remove_after (q);
+          if (q == NULL) // 처음 것 지우기
+            poly->first = p->next;
+          else // q 다음 것 지우기
+            q->next = p->next;
+
+          poly->size--;
           free (p);
         }
-      else
-        {
-          p->coef += c;
-        }
-    }
-  // 동일 차수의 항이 존재하지 않는 경우
-  else
-    {
-      if (q == NULL) // 맨 앞에 삽입
-        add_first (c, e, poly);
-      else
-        add_after (c, e, q);
-    }
-}
 
-Term *
-remove_first (Polynomial *poly)
-{
-  Term *head = poly->first;
-  if (head == NULL)
-    return NULL;
-  else
-    {
-      poly->first = head->next;
-      return head;
-    }
-}
-
-Term *
-remove_after (Term *prev)
-{
-  Term *t = prev->next;
-  if (t == NULL)
-    {
-      return NULL;
+      return;
     }
 
-  else
-    {
-      prev->next = t->next;
-    }
+  Term *t = create_term_instance ();
+  t->coef = c;
+  t->expo = e;
 
-  return t;
+  if (q == NULL) // 맨앞에 삽입해야하는 경우
+    add_first (c, e, poly);
+  else // q의 뒤, p의 앞에 삽입해야하는 경우
+    add_after (c, e, q);
+  poly->size++;
 }
 
 void
 add_first (int c, int e, Polynomial *poly)
 {
-  Term *head = poly->first;
   Term *t = create_term_instance ();
   t->coef = c;
   t->expo = e;
-  t->next = head->next;
-  head->next = t;
+
+  t->next = poly->first;
+  poly->first = t;
 }
 
 void
@@ -347,6 +329,7 @@ add_after (int c, int e, Term *prev)
   Term *t = create_term_instance ();
   t->coef = c;
   t->expo = e;
+
   t->next = prev->next;
   prev->next = t;
 }
@@ -373,35 +356,51 @@ eval_term (Term *t, int x)
 }
 
 void
-print_poly (Polynomial *p)
+print_poly (Polynomial *poly)
 {
-  const Term *head = p->first;
-  Term *t = head;
+  Term *t = poly->first;
 
   while (t != NULL)
     {
-      print_term (t, head);
+      print_term (t, poly);
       t = t->next;
     }
+
+  printf ("\n");
 }
 
 void
-print_term (Term *pTerm, const Term *head)
+print_term (Term *pTerm, Polynomial *poly)
 {
-  // 일반항
-  if (pTerm->expo != 0)
+  if (pTerm->coef > 0 && pTerm != poly->first) //[+2x^5,+2x,+x^5,+x,+3]
     {
-      if (pTerm->coef >= 0 && pTerm != head)
+      if (pTerm->coef > 1 && pTerm->expo > 1)
         printf ("+%dx^%d", pTerm->coef, pTerm->expo);
-      else
-        printf ("%dx^%d", pTerm->coef, pTerm->expo);
+      if (pTerm->coef > 1 && pTerm->expo == 1)
+        printf ("+%dx", pTerm->coef);
+      if (pTerm->coef == 1 && pTerm->expo > 1)
+        printf ("+x^%d", pTerm->expo);
+      if (pTerm->coef == 1 && pTerm->expo == 1)
+        printf ("+x");
+      if (pTerm->coef > 0 && pTerm->expo == 0)
+        printf ("+%d", pTerm->coef);
     }
-  // 상수항
+
   else
     {
-      if (pTerm->coef >= 0 && pTerm != head)
-        printf ("+%d", pTerm->coef);
-      else
+      if (pTerm->coef != 1 && pTerm->expo > 1)
+        printf ("%dx^%d", pTerm->coef, pTerm->expo);
+      if (pTerm->coef != 1 && pTerm->expo == 1)
+        printf ("%dx", pTerm->coef);
+      if (pTerm->coef == -1 && pTerm->expo > 1)
+        printf ("-x^%d", pTerm->expo);
+      if (pTerm->coef == 1 && pTerm->expo > 1)
+        printf ("x^%d", pTerm->expo);
+      if (pTerm->coef == -1 && pTerm->expo == 1)
+        printf ("-x");
+      if (pTerm->coef == 1 && pTerm->expo == 1)
+        printf ("x");
+      if (pTerm->expo == 0)
         printf ("%d", pTerm->coef);
     }
 }
@@ -448,4 +447,61 @@ destroy_polynomial (Polynomial *ptr_poly)
     }
 
   free (ptr_poly);
+}
+
+Polynomial *
+create_by_add_two_polynomials (char name, char f, char g)
+{
+  int c, e;
+  Polynomial *new_p = create_polynomial_instance (name);
+  Polynomial *p1 = NULL, *p2 = NULL;
+  Term *new_t;
+  Term *t1, *t2;
+
+  for (int i = 0; i < n; i++)
+    {
+      if (polys[i]->name == f)
+        p1 = polys[i];
+      if (polys[i]->name == g)
+        p2 = polys[i];
+    }
+  if (p1 == NULL || p2 == NULL)
+    return NULL;
+
+  new_t = new_p->first;
+  t1 = p1->first;
+  t2 = p2->first;
+
+  while (p1 != NULL || p2 != NULL)
+    {
+      if (t1->expo == t2->expo)
+        {
+          c = (t1->coef) + (t2->coef);
+          e = (t1->expo);
+          add_term (c, e, new_p);
+          t1 = t1->next;
+          t2 = t2->next;
+        }
+
+      else
+        {
+          if (t1->expo > t2->expo)
+            {
+              c = t1->coef;
+              e = t1->expo;
+              add_term (c, e, new_p);
+              t1 = t1->next;
+            }
+
+          else
+            {
+              c = t2->coef;
+              e = t2->expo;
+              add_term (c, e, new_p);
+              t2 = t2->next;
+            }
+        }
+    }
+
+  return new_p;
 }
