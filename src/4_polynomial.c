@@ -50,6 +50,7 @@ void print_term (Term *pTerm, Polynomial *poly);
 Polynomial *findPolyByName (char poly_name);
 void insert_polynomial (Polynomial *ptr_poly);
 void destroy_polynomial (Polynomial *ptr_poly);
+Polynomial *create_by_add_two_polynomials (char name, char f, char g);
 
 int
 main ()
@@ -110,8 +111,10 @@ process_command ()
 void
 handle_calc (char poly_name, char *input_value)
 {
+  int result;
   Polynomial *p = findPolyByName (poly_name);
-  eval_poly (p, atoi (input_value));
+  result = eval_poly (p, atoi (input_value));
+  printf ("%d\n", result);
 }
 void
 handle_print (char poly_name)
@@ -130,9 +133,25 @@ handle_definition (char *expression)
   name = (strtok (expression, "="))[0];
   body = strtok (NULL, "");
 
+  if (body[0] >= 'a' && body[0] <= 'z' && body[0] != 'x')
+    {
+      if (body[3] != '\0')
+        return;
+      if (body[1] == '+')
+        {
+          if (body[2] >= 'a' && body[2] <= 'z' && body[2] != 'x')
+            {
+              p = create_by_add_two_polynomials (name, body[0], body[2]);
+              insert_polynomial (p);
+              return;
+            }
+        }
+      return;
+    }
+
   p = create_by_parse_polynomial (name, body);
-  polys[n] = p;
-  n++;
+
+  insert_polynomial (p);
 }
 
 Polynomial *
@@ -142,13 +161,18 @@ create_by_parse_polynomial (char name, char *body)
   int i = 0, begin_term = 0,
       result
       = 0; // begin_term은 -,+를 만날 때 그 자리로 인덱스 숫자가 변경된다.
-  while (i < strlen (body))
+  while (i < (int)strlen (body))
     {
       if (body[i] == '+' || body[i] == '-' || i == 0)
-        begin_term = i;
+        {
+          begin_term = i;
+        }
       i++;
-      if (body[i] == '+' || body[i] == '-')
-        result = parse_and_add_term (body, begin_term, i, ptr_poly);
+      if (body[i] == '+' || body[i] == '-'
+          || i >= (int)strlen (body) - 1 && body[i] != '\0')
+        {
+          result = parse_and_add_term (body, begin_term, i, ptr_poly);
+        }
     }
 
   return ptr_poly;
@@ -170,11 +194,12 @@ parse_and_add_term (char *expr, int begin, int end, Polynomial *p_poly)
   else if (expr[begin] == '-')
     sign_coef = -1; // 음수
 
-  while ((i < end)
-         && ((expr[i] >= '0' && expr[i] <= '9')
-             || (expr[i] == '+' || expr[i] == '-')))
+  while ((expr[i] >= '0' && expr[i] <= '9')
+         || (expr[i] == '+' || expr[i] == '-'))
     {
       buffer_coef[c_index++] = expr[i];
+      if (i == end)
+        break;
       i++;
     }
   buffer_coef[c_index] = '\0';
@@ -184,8 +209,9 @@ parse_and_add_term (char *expr, int begin, int end, Polynomial *p_poly)
   if (coef == 0) // coef 가 0인 경우->계수가 1또는 -1인 x -x를 나타낸다.
     coef = 1;
 
-  if (i == end) // 문자를 다 읽은 경우->상수항
+  if (i == end && expr[i] != 'x') // 문자를 다 읽은 경우->상수항
     {
+      expo = 0;
       add_term (coef, expo, p_poly);
       return 1;
     }
@@ -194,7 +220,7 @@ parse_and_add_term (char *expr, int begin, int end, Polynomial *p_poly)
     return 0;
   i++;
 
-  if (i == end)
+  if (i >= end)
     {
       add_term (coef, expo, p_poly);
       return 1;
@@ -260,7 +286,7 @@ void
 compress (char *str)
 {
   int n = 0;
-  for (int i = 0; i < strlen (str); i++)
+  for (int i = 0; i < (int)strlen (str); i++)
     {
       if (str[i] != ' ')
         {
@@ -408,7 +434,7 @@ print_term (Term *pTerm, Polynomial *poly)
 Polynomial *
 findPolyByName (char poly_name)
 {
-  for (int i = 0; i < strlen (polys); i++)
+  for (int i = 0; i < n; i++)
     {
       if (polys[i]->name == poly_name)
         return polys[i];
@@ -445,7 +471,6 @@ destroy_polynomial (Polynomial *ptr_poly)
       t = t->next;
       free (tmp);
     }
-
   free (ptr_poly);
 }
 
@@ -472,7 +497,7 @@ create_by_add_two_polynomials (char name, char f, char g)
   t1 = p1->first;
   t2 = p2->first;
 
-  while (p1 != NULL || p2 != NULL)
+  while (t1 != NULL || t2 != NULL)
     {
       if (t1->expo == t2->expo)
         {
