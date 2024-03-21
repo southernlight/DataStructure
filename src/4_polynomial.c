@@ -29,18 +29,13 @@ void process_command ();
 void handle_calc (char poly_name, char *input_value);
 void handle_print (char poly_name);
 void handle_definition (char *poly);
-
 Polynomial *create_by_parse_polynomial (char name, char *body);
 int parse_and_add_term (char *expr, int begin, int end, Polynomial *ptr_poly);
-
 Polynomial *create_polynomial_instance (char name);
 Term *create_term_instance ();
 int read_line (char *str, int limit);
 void compress (char *str);
-
 void add_term (int c, int e, Polynomial *poly);
-Term *remove_first (Polynomial *poly);
-Term *remove_after (Term *prev);
 void add_first (int c, int e, Polynomial *poly);
 void add_after (int c, int e, Term *prev);
 int eval_poly (Polynomial *poly, int x);
@@ -125,54 +120,85 @@ handle_print (char poly_name)
 void
 handle_definition (char *expression)
 {
-  char name;
+  char *name;
   char *body;
-  Polynomial *p;
+  char *former;
+  char *later;
+  Polynomial *poly;
 
   compress (expression);
-  name = (strtok (expression, "="))[0];
-  body = strtok (NULL, "");
+  name = strtok (expression, "=");
+  body = strtok (NULL, "=");
 
-  if (body[0] >= 'a' && body[0] <= 'z' && body[0] != 'x')
+  if (name == NULL || strlen (name) != 1)
     {
-      if (body[3] != '\0')
-        return;
-      if (body[1] == '+')
-        {
-          if (body[2] >= 'a' && body[2] <= 'z' && body[2] != 'x')
-            {
-              p = create_by_add_two_polynomials (name, body[0], body[2]);
-              insert_polynomial (p);
-              return;
-            }
-        }
+      printf ("Unsupported command.\n");
       return;
     }
 
-  p = create_by_parse_polynomial (name, body);
+  if (body == NULL || strlen (body) <= 0)
+    {
+      printf ("Invalid expression format.\n");
+      return;
+    }
 
-  insert_polynomial (p);
+  if (body[0] >= 'a' && body[0] <= 'z' && body[0] != 'x')
+    {
+      former = strtok (body, "+");
+      if (former == NULL || strlen (former) > 1)
+        {
+          printf ("Invalid expression format.\n");
+          return;
+        }
+      later = strtok (NULL, "+");
+      if (later == NULL || strlen (former) > 1)
+        {
+          printf ("Invalid expression format.\n");
+          return;
+        }
+
+      poly = create_by_add_two_polynomials (name[0], former[0], later[0]);
+
+      if (poly == NULL)
+        {
+          printf ("Invalid expression format.\n");
+          return;
+        }
+      insert_polynomial (poly);
+    }
+
+  else
+    {
+      poly = create_by_parse_polynomial (name[0], body);
+      if (poly == NULL)
+        {
+          printf ("Invalid expression format.\n");
+          return;
+        }
+      insert_polynomial (poly);
+    }
 }
 
 Polynomial *
 create_by_parse_polynomial (char name, char *body)
 {
   Polynomial *ptr_poly = create_polynomial_instance (name);
-  int i = 0, begin_term = 0,
-      result
-      = 0; // begin_term은 -,+를 만날 때 그 자리로 인덱스 숫자가 변경된다.
-  while (i < (int)strlen (body))
+
+  int i = 0, begin_term = 0, result = 0;
+
+  while (i < strlen (body))
     {
-      if (body[i] == '+' || body[i] == '-' || i == 0)
+      if (body[i] == '+' || body[i] == '-')
+        i++;
+      while (i < strlen (body) && body[i] != '+' && body[i] != '-')
+        i++;
+      result = parse_and_add_term (body, begin_term, i, ptr_poly);
+      if (result == 0)
         {
-          begin_term = i;
+          destroy_polynomial (ptr_poly);
+          return NULL;
         }
-      i++;
-      if (body[i] == '+' || body[i] == '-'
-          || i >= (int)strlen (body) - 1 && body[i] != '\0')
-        {
-          result = parse_and_add_term (body, begin_term, i, ptr_poly);
-        }
+      begin_term = i;
     }
 
   return ptr_poly;
@@ -181,38 +207,32 @@ create_by_parse_polynomial (char name, char *body)
 int
 parse_and_add_term (char *expr, int begin, int end, Polynomial *p_poly)
 {
+
   int i = begin;
-  int c_index = 0, e_index = 0;
-  int sign_coef = 1;      //-1: 음수 1: 양수
-  int coef = 0, expo = 1; // coef 는 계수의 절댓값
+  int sign_coef = 1, coef = 0, expo = 1;
 
-  char buffer_coef[BUFFER_SIZE];
-  char buffer_expo[BUFFER_SIZE];
-
-  if (expr[begin] == '+' || (expr[begin] >= '1' && expr[begin] <= '9'))
-    sign_coef = 1; // 양수
-  else if (expr[begin] == '-')
-    sign_coef = -1; // 음수
-
-  while ((expr[i] >= '0' && expr[i] <= '9')
-         || (expr[i] == '+' || expr[i] == '-'))
+  if (expr[i] == '+')
+    i++;
+  else if (expr[i] == '-')
     {
-      buffer_coef[c_index++] = expr[i];
-      if (i == end)
-        break;
+      sign_coef = -1;
       i++;
     }
-  buffer_coef[c_index] = '\0';
 
-  coef = sign_coef * abs (atoi (buffer_coef));
-
-  if (coef == 0) // coef 가 0인 경우->계수가 1또는 -1인 x -x를 나타낸다.
-    coef = 1;
-
-  if (i == end && expr[i] != 'x') // 문자를 다 읽은 경우->상수항
+  while (i < end && expr[i] >= '0' && expr[i] <= '9')
     {
-      expo = 0;
-      add_term (coef, expo, p_poly);
+      coef = coef * 10 + (int)(expr[i] - '0');
+      i++;
+    }
+
+  if (coef == 0)
+    coef = sign_coef;
+  else
+    coef *= sign_coef;
+
+  if (i >= end)
+    {
+      add_term (coef, 0, p_poly);
       return 1;
     }
 
@@ -222,7 +242,7 @@ parse_and_add_term (char *expr, int begin, int end, Polynomial *p_poly)
 
   if (i >= end)
     {
-      add_term (coef, expo, p_poly);
+      add_term (coef, 1, p_poly);
       return 1;
     }
 
@@ -230,15 +250,12 @@ parse_and_add_term (char *expr, int begin, int end, Polynomial *p_poly)
     return 0;
   i++;
 
-  for (i; i < end; i++)
+  expo = 0;
+  while (i < end && expr[i] >= '0' && expr[i] <= '9')
     {
-      if (!(expr[i] > '0' && expr[i] < '9'))
-        return 0;
-      buffer_expo[e_index++] = expr[i];
+      expo = expo * 10 + (int)(expr[i] - '0');
+      i++;
     }
-
-  buffer_expo[e_index] = '\0';
-  expo = atoi (buffer_expo);
 
   add_term (coef, expo, p_poly);
   return 1;
@@ -384,8 +401,8 @@ eval_term (Term *t, int x)
 void
 print_poly (Polynomial *poly)
 {
+  printf ("%c=", poly->name);
   Term *t = poly->first;
-
   while (t != NULL)
     {
       print_term (t, poly);
@@ -471,6 +488,7 @@ destroy_polynomial (Polynomial *ptr_poly)
       t = t->next;
       free (tmp);
     }
+
   free (ptr_poly);
 }
 
