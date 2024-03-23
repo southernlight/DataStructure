@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 typedef struct node
 {
@@ -11,12 +13,26 @@ Node *tail;
 int size = 0; // the number of Nodes.
 
 void add_after (Node *pre, char *item);
-Node *remove (Node *p);
-
-// TODO: remove 만들기
+Node *removeNode (Node *p);
+void add_ordered_list (char *item);
+Node *find (char *item);
+// TODO: find 함수 만들기
 int
 main ()
 {
+  // test_code
+  add_ordered_list ("a");
+  add_ordered_list ("b");
+  add_ordered_list ("e");
+  add_ordered_list ("f");
+
+  Node *tmp = head;
+  while (tmp != NULL)
+    {
+      printf ("%s", tmp->data);
+      tmp = tmp->next;
+    }
+
   return 0;
 }
 
@@ -60,14 +76,48 @@ add_after (Node *pre, char *item)
 }
 
 Node *
-remove (Node *p)
+removeNode (Node *p)
 {
   if (head == NULL && tail == NULL)
     return NULL;
-  else if (head == tail)
+  else if (head == tail) // p가 유일한 노드인 경우
     {
       head = NULL;
       tail = NULL;
-      free (p);
     }
+
+  else if (p == head) // p가 head인 경우
+    {
+      p->next->prev = NULL;
+      head = head->next;
+    }
+
+  else if (p == tail) // p가 tail인 경우
+    {
+      p->prev->next = NULL;
+      tail = tail->prev;
+    }
+
+  else // 그 밖의 일반적인 경우
+    {
+      p->prev->next = p->next;
+      p->next->prev = p->prev;
+    }
+
+  return p;
+}
+
+void
+add_ordered_list (char *item)
+{
+  Node *p = tail;
+  while (p != NULL && strcmp (item, p->data) < 0)
+    p = p->prev;
+  add_after (p, item);
+}
+
+Node *
+find (char *item)
+{
+  ;
 }
