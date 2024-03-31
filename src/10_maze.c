@@ -123,7 +123,7 @@ print_maze ()
   printf ("\n");
 }
 
-bool //movable 이면 trur movable 하지 않으면 false
+bool //movable 이면 true ,movable 하지 않으면 false
 movable (Position pos, int dir)
 {
   pos.x += offset[dir][0];
